@@ -33,6 +33,22 @@ function CombatState.exit()
     current_enemy = nil
 end
 
+-- Shared victory handling for both kill paths (attack and parry).
+local function on_enemy_defeated()
+    current_enemy.defeated = true
+    if current_enemy.isBoss then
+        victory()
+        return
+    end
+    local StateManager = require("state_manager")
+    StateManager.set_state("world")
+    if all_regular_enemies_defeated() then
+        spawn_boss()
+    else
+        _G.message = "Enemy defeated!"
+    end
+end
+
 function CombatState.update(dt)
     if _G.turnPhase == "enemyWarning" then
         _G.warningTimer = _G.warningTimer - dt
@@ -82,7 +98,7 @@ function CombatState.draw_combat_hud()
     -- Enemy HP
     if current_enemy then
         love.graphics.setColor(1, 1, 1)
-        love.graphics.print("ENEMY HP", 500, 30)
+        love.graphics.print((current_enemy.name or "ENEMY") .. " HP", 500, 30)
         love.graphics.setColor(0.3, 0, 0)
         love.graphics.rectangle("fill", 500, 50, 250, 20)
         love.graphics.setColor(0.8, 0.1, 0.1)
@@ -113,8 +129,13 @@ function CombatState.draw_entities()
     love.graphics.rectangle("fill", 200, 300, 60, 80)
 
     if current_enemy then
-        love.graphics.setColor(0.7, 0.2, 0.2)
-        love.graphics.rectangle("fill", 550, 300, 80, 100)
+        local c = current_enemy.color or {0.7, 0.2, 0.2}
+        local w, h = 80, 100
+        if current_enemy.isBoss then
+            w, h = 130, 160
+        end
+        love.graphics.setColor(c[1], c[2], c[3])
+        love.graphics.rectangle("fill", 550, 300 - (h - 100) / 2, w, h)
     end
 end
 
@@ -157,11 +178,7 @@ function CombatState.keypressed(key)
                     current_enemy.hp = current_enemy.hp - math.floor(player.attack * a.dmg)
                     _G.message = "You attack!"
                     if current_enemy.hp <= 0 then
-                        current_enemy.defeated = true
-                        -- Return to world state after victory
-                        local StateManager = require("state_manager")
-                        StateManager.set_state("world")
-                        _G.message = "Enemy defeated!"
+                        on_enemy_defeated()
                         return
                     end
                 end
@@ -184,9 +201,10 @@ function CombatState.start_enemy_attack()
     
     _G.turnPhase = "enemyWarning"
     _G.reacted = false
-    _G.warningTimer = 1.0
+    _G.warningTimer = current_enemy.warningTime or 1.0
 
-    current_enemy.attackType = math.random() < 0.5 and "red" or "yellow"
+    local redWeight = current_enemy.redWeight or 0.5
+    current_enemy.attackType = math.random() < redWeight and "red" or "yellow"
 
     local dirs = {"top", "left", "right", "bottom", "around"}
     current_enemy.attackDir = dirs[math.random(#dirs)]
@@ -224,29 +242,27 @@ function CombatState.handle_reaction(key)
         _G.reacted = true
         _G.message = "PARRY!"
         if current_enemy.hp <= 0 then
-            current_enemy.defeated = true
-            -- Return to world state after victory
-            local StateManager = require("state_manager")
-            StateManager.set_state("world")
+            on_enemy_defeated()
         end
     end
 end
 
 function CombatState.resolve_enemy_attack()
     if not current_enemy then return end
-    
+
     if not _G.reacted then
         local dmg = math.max(0, current_enemy.attack - player.defense)
         player.hp = player.hp - dmg
         _G.message = "HIT! -"..dmg.." HP"
-        if player.hp <= 0 then 
-            -- Could transition to game over state here
-        end
     end
 
     player.stamina = player.maxStamina
     player.unusedStamina = 0
     _G.turnPhase = "player"
+
+    if player.hp <= 0 then
+        game_over()
+    end
 end
 
 return CombatState

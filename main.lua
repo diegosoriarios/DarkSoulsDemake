@@ -35,7 +35,8 @@ function love.load()
         width = 2000,
         height = 1500,
         items = {},
-        enemies = {}
+        enemies = {},
+        boss = nil
     }
 
     -- Initialize camera (for world state)
@@ -66,8 +67,9 @@ function love.load()
     StateManager.add_state("combat", CombatState)
     StateManager.add_state("menu", MenuState)
 
-    -- Set initial state
-    StateManager.set_state("world")
+    -- Boot to the main menu (reset any stale victory/gameover screen)
+    MenuState.set_menu_type("main")
+    StateManager.set_state("menu")
 end
 
 function generateWorldItems()
@@ -83,20 +85,23 @@ function generateWorldItems()
 end
 
 function generateWorldEnemies()
-    world.enemies = {}
-    for i = 1, 5 do
-        table.insert(world.enemies, {
-            hp = 80,
-            maxHp = 80,
-            attack = 15,
-            x = math.random(200, world.width - 200),
-            y = math.random(200, world.height - 200),
-            width = 25,
-            height = 35,
-            active = false,
-            defeated = false
-        })
+    local Enemies = require("enemies")
+    world.enemies = Enemies.spawn_world_enemies(world.width, world.height)
+end
+
+function all_regular_enemies_defeated()
+    for _, en in ipairs(world.enemies) do
+        if not en.defeated then return false end
     end
+    return true
+end
+
+function spawn_boss()
+    local Enemies = require("enemies")
+    world.boss = Enemies.get_boss()
+    world.boss.x = math.random(300, world.width - 300)
+    world.boss.y = math.random(300, world.height - 300)
+    _G.message = "A great presence stirs... something approaches!"
 end
 
 function love.update(dt)
