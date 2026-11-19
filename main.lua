@@ -8,10 +8,14 @@
 
 -- Import state manager
 local StateManager = require("state_manager")
+local Sprites = require("sprites")
 
 function love.load()
     love.window.setTitle("Dark Souls Demake")
     love.window.setMode(1200, 800)
+
+    -- Load character sprites before anything draws
+    Sprites.load()
 
     -- Initialize player (shared across states)
     player = {
@@ -27,6 +31,7 @@ function love.load()
         width = 20,
         height = 30,
         speed = 200,
+        vis = Sprites.new_vis(),
         inventory = {}
     }
 
@@ -50,7 +55,7 @@ function love.load()
     message = "Welcome to Dark Souls Demake"
     warningTimer = 0
     flashTimer = 0
-    iFrames = 0.1
+    iFrames = 0.3
     iFrameTimer = 0
     reacted = false
 
@@ -114,6 +119,10 @@ end
 
 function love.keypressed(key)
     StateManager.keypressed(key)
+end
+
+function love.mousepressed(x, y, button)
+    StateManager.mousepressed(x, y, button)
 end
 
 -- Helper function to restart the game

@@ -42,6 +42,12 @@ function StateManager.keypressed(key)
     end
 end
 
+function StateManager.mousepressed(x, y, button)
+    if StateManager.current_state and StateManager.current_state.mousepressed then
+        StateManager.current_state.mousepressed(x, y, button)
+    end
+end
+
 function StateManager.get_state()
     return StateManager.current_state
 end

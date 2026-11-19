@@ -7,6 +7,8 @@
 
 local Enemies = {}
 
+local Sprites = require("sprites")
+
 local ARCHETYPES = {
     hollow = {
         name = "Hollow",
@@ -14,6 +16,8 @@ local ARCHETYPES = {
         attack = 12,
         warningTime = 1.2,   -- slow telegraph, forgiving
         redWeight = 0.3,     -- mostly yellow: parry practice
+        maxStamina = 4,      -- tempo budget per round
+        attackCost = 2,      -- stamina spent per attack
         color = {0.55, 0.5, 0.45},
         width = 22,
         height = 32,
@@ -24,6 +28,8 @@ local ARCHETYPES = {
         attack = 15,
         warningTime = 1.0,   -- the old baseline timing
         redWeight = 0.5,
+        maxStamina = 5,
+        attackCost = 2,
         color = {0.7, 0.2, 0.2},
         width = 25,
         height = 35,
@@ -34,6 +40,8 @@ local ARCHETYPES = {
         attack = 22,
         warningTime = 0.85,  -- short telegraph, hits hard
         redWeight = 0.75,    -- mostly red: dodge or die
+        maxStamina = 6,
+        attackCost = 3,
         color = {0.6, 0.1, 0.5},
         width = 34,
         height = 44,
@@ -47,6 +55,8 @@ local BOSS = {
     attack = 25,
     warningTime = 0.65,    -- true reaction check
     redWeight = 0.5,
+    maxStamina = 8,
+    attackCost = 3,
     color = {1.0, 0.45, 0.1},
     width = 55,
     height = 75,
@@ -58,6 +68,8 @@ function Enemies.get_boss()
     for k, v in pairs(BOSS) do
         boss[k] = v
     end
+    boss.vis = Sprites.new_vis()
+    boss.stamina = boss.maxStamina
     return boss
 end
 
@@ -75,11 +87,15 @@ function Enemies.spawn_world_enemies(world_width, world_height)
             attack = a.attack,
             warningTime = a.warningTime,
             redWeight = a.redWeight,
+            maxStamina = a.maxStamina,
+            stamina = a.maxStamina,
+            attackCost = a.attackCost,
             color = a.color,
             x = math.random(200, world_width - 200),
             y = math.random(200, world_height - 200),
             width = a.width,
             height = a.height,
+            vis = Sprites.new_vis(),
             active = false,
             defeated = false,
             isBoss = false,

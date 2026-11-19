@@ -1,5 +1,7 @@
 -- world_state.lua - Handles world exploration and movement
 
+local Sprites = require("sprites")
+
 local WorldState = {}
 
 function WorldState.enter()
@@ -12,18 +14,35 @@ function WorldState.exit()
 end
 
 function WorldState.update(dt)
+    -- Sprite fx timers
+    Sprites.update_vis(player.vis, dt)
+    Sprites.update_shake(dt)
+    for _, en in ipairs(world.enemies) do
+        if not en.defeated then Sprites.update_vis(en.vis, dt) end
+    end
+    if world.boss and not world.boss.defeated then
+        Sprites.update_vis(world.boss.vis, dt)
+    end
+
     -- Player movement
+    player.vis.walking = false
     if love.keyboard.isDown("w") then
         player.y = math.max(0, player.y - player.speed * dt)
+        player.vis.walking = true
     end
     if love.keyboard.isDown("s") then
         player.y = math.min(world.height, player.y + player.speed * dt)
+        player.vis.walking = true
     end
     if love.keyboard.isDown("a") then
         player.x = math.max(0, player.x - player.speed * dt)
+        player.vis.walking = true
+        player.vis.faceX = -1
     end
     if love.keyboard.isDown("d") then
         player.x = math.min(world.width, player.x + player.speed * dt)
+        player.vis.walking = true
+        player.vis.faceX = 1
     end
 
     -- Update camera to follow player
@@ -51,6 +70,10 @@ function WorldState.update(dt)
     for _, en in ipairs(world.enemies) do
         if not en.defeated then
             local dist = math.sqrt((player.x - en.x)^2 + (player.y - en.y)^2)
+            -- Nearby enemies turn to face the player
+            if dist < 150 then
+                en.vis.faceX = (player.x >= en.x) and 1 or -1
+            end
             if dist < 50 then
                 -- Transition to combat state
                 local StateManager = require("state_manager")
@@ -97,9 +120,9 @@ function WorldState.draw()
     -- Draw enemies
     for _, en in ipairs(world.enemies) do
         if not en.defeated then
-            local c = en.color or {0.7, 0.2, 0.2}
-            love.graphics.setColor(c[1], c[2], c[3])
-            love.graphics.rectangle("fill", en.x - camera.x, en.y - camera.y, en.width, en.height)
+            Sprites.draw_character("enemy", en.vis,
+                en.x + en.width / 2 - camera.x, en.y + en.height - camera.y,
+                en.width, en.height, en.color)
             -- Draw HP bar above enemy
             love.graphics.setColor(0.3, 0, 0)
             love.graphics.rectangle("fill", en.x - camera.x, en.y - camera.y - 15, en.width, 5)
@@ -111,8 +134,9 @@ function WorldState.draw()
     -- Draw boss
     local boss = world.boss
     if boss and not boss.defeated then
-        love.graphics.setColor(boss.color[1], boss.color[2], boss.color[3])
-        love.graphics.rectangle("fill", boss.x - camera.x, boss.y - camera.y, boss.width, boss.height)
+        Sprites.draw_character("enemy", boss.vis,
+            boss.x + boss.width / 2 - camera.x, boss.y + boss.height - camera.y,
+            boss.width, boss.height, boss.color)
         -- Glowing outline so it reads as something special
         love.graphics.setColor(1, 0.45, 0.1)
         love.graphics.setLineWidth(2)
@@ -126,8 +150,9 @@ function WorldState.draw()
     end
 
     -- Draw player
-    love.graphics.setColor(0.3, 0.6, 0.9)
-    love.graphics.rectangle("fill", player.x - camera.x, player.y - camera.y, player.width, player.height)
+    Sprites.draw_character("player", player.vis,
+        player.x + player.width / 2 - camera.x, player.y + player.height - camera.y,
+        player.width, player.height)
 
     -- Draw HUD
     WorldState.draw_hud()
